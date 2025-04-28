@@ -1,103 +1,143 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState, useEffect, useCallback } from "react";
+import ItemCard from "@/components/ItemCard";
+import Cart from "@/components/Cart";
+import SearchBar from "@/components/SearchBar";
+import ChatInput from "@/components/ChatInput";
+
+const itemsPerPage = 10;
+
+const Page = () => {
+  const [items, setItems] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+const url = process.env.NEXT_PUBLIC_API_URL;
+
+console.log("url", url)
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/items?search=${search}&page=${currentPage}&limit=${itemsPerPage}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch items");
+
+      const data = await res.json();
+      if (Array.isArray(data.items)) {
+        setItems(data.items);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        console.error("Items data is not an array", data);
+      }
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    }
+  }, [search, currentPage]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  const addToCart = (item) => {
+    setCart((prev) => {
+      const existing = prev.find((cartItem) => cartItem._id === item._id);
+      return existing
+        ? prev.map((cartItem) =>
+            cartItem._id === item._id
+              ? { ...cartItem, quantity: cartItem.quantity + 1 }
+              : cartItem
+          )
+        : [...prev, { ...item, quantity: 1 }];
+    });
+  };
+
+  const removeFromCart = (id) => {
+    setCart((prev) => prev.filter((item) => item._id !== id));
+  };
+
+  const updateQuantity = (id, type) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item._id === id
+          ? {
+              ...item,
+              quantity:
+                type === "increase"
+                  ? item.quantity + 1
+                  : Math.max(item.quantity - 1, 1),
+            }
+          : item
+      )
+    );
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage !== currentPage && newPage > 0 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="p-8">
+      <h1 className="text-5xl text-center font-bold mb-6">Ordering Web App</h1>
+      <ChatInput/>
+      <SearchBar setSearch={setSearch} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 my-6">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <ItemCard key={item._id} item={item} addToCart={addToCart} />
+          ))
+        ) : (
+          <p className="col-span-full text-center text-gray-500">
+            No items found
+          </p>
+        )}
+      </div>
+
+      <Cart
+        cart={cart}
+        removeFromCart={removeFromCart}
+        updateQuantity={updateQuantity}
+      />
+
+      {totalPages > 1 && (
+        <div className="mt-8 flex flex-wrap justify-center items-center gap-2">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-300 text-black rounded-md disabled:opacity-50"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Prev
+          </button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => handlePageChange(page)}
+              className={`px-4 py-2 rounded-md cursor-pointer ${
+                page === currentPage
+                  ? "bg-black text-white"
+                  : "bg-gray-300 text-black"
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-300 text-black rounded-md cursor-pointer disabled:opacity-50"
           >
-            Read our docs
-          </a>
+            Next
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
     </div>
   );
-}
+};
+
+export default Page;
