@@ -29,4 +29,7 @@ npm run dev
 
 The app will be accessible at http://localhost:3000
 
-## Deploy on Vercel
+Deploy on Vercel
+https://ordering-frontend-two.vercel.app
+
+
