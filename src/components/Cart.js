@@ -28,7 +28,6 @@ const Cart = ({ cart, removeFromCart, updateQuantity }) => {
             >
               +
             </button>
-
             <button
               onClick={() => removeFromCart(item._id)}
               className="px-4 py-1 bg-red-500 cursor-pointer text-white rounded-md"
